@@ -4,7 +4,7 @@ shortlink.py — Self-hosted URL shortener for xameco.net
 Runs as a systemd service. Links are stored in links.json (same directory).
 
 Usage:
-    GET  /<slug>          -> 301 redirect to target URL
+    GET  /<slug>          -> 301 redirect to target URL (or default redirect if slug unknown)
     GET  /healthz         -> {"status": "ok", "links": N}
     POST /add             -> add/update a link  (requires X-API-Key header)
     DELETE /remove/<slug> -> delete a link      (requires X-API-Key header)
@@ -28,12 +28,15 @@ from flask import Flask, abort, jsonify, redirect, request
 BASE_DIR    = Path(__file__).parent
 LINKS_FILE  = BASE_DIR / "links.json"
 LOG_FILE    = BASE_DIR / "shortlink.log"
-HOST        = "127.0.0.1"          # Nginx/Traefik sits in front — bind locally
+HOST        = "127.0.0.1"                # Replace with your IP 
 PORT        = 5000
-API_KEY     = os.environ.get("SHORTLINK_API_KEY", "change-me-in-env")
-LOG_LEVEL   = os.environ.get("LOG_LEVEL", "INFO").upper()
-MAX_LOG_MB  = 10                    # rotate at 10 MB
-LOG_BACKUPS = 5                     # keep 5 rotated files
+API_KEY          = os.environ.get("SHORTLINK_API_KEY", "change-me-in-env")
+LOG_LEVEL        = os.environ.get("LOG_LEVEL", "INFO").upper()
+MAX_LOG_MB       = 10                    # rotate at 10 MB
+LOG_BACKUPS      = 5                     # keep 5 rotated files
+# If set, unknown slugs redirect here instead of returning 404.
+# Leave empty or unset to keep the 404 behaviour.
+DEFAULT_REDIRECT = os.environ.get("SHORTLINK_DEFAULT", "").strip()
 
 SLUG_RE     = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
@@ -153,7 +156,7 @@ def log_response(response):
 @app.route("/healthz")
 def healthz():
     links = load_links()
-    return jsonify(status="ok", links=len(links), file=str(LINKS_FILE))
+    return jsonify(status="ok", links=len(links), file=str(LINKS_FILE), default_redirect=DEFAULT_REDIRECT or None)
 
 
 @app.route("/list")
@@ -227,6 +230,13 @@ def go(slug):
             request.headers.get("Referer", "-"),
         )
         return redirect(target, 301)
+
+    if DEFAULT_REDIRECT:
+        log.warning(
+            "Slug not found: %s  ip=%s  -> default redirect: %s",
+            slug, request.remote_addr, DEFAULT_REDIRECT,
+        )
+        return redirect(DEFAULT_REDIRECT, 302)   # 302 so browsers don't cache it
 
     log.warning("Slug not found: %s  ip=%s", slug, request.remote_addr)
     abort(404)
