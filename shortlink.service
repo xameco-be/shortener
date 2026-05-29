@@ -11,6 +11,7 @@ WorkingDirectory=/opt/shortlink
 
 # --- Environment ---
 Environment="SHORTLINK_API_KEY=change-me-to-a-strong-secret"
+Environment="SHORTLINK_DEFAULT=https://xameco.net"
 Environment="LOG_LEVEL=INFO"
 # Alternatively, point to an env file and keep secrets out of this unit:
 # EnvironmentFile=/etc/shortlink/shortlink.env
