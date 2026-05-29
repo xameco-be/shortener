@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, redirect, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -106,6 +107,9 @@ def save_links(links: dict) -> None:
 app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = True
 
+# Trust exactly 1 proxy hop (Traefik). Increase x_for if you have
+# multiple proxies stacked in front (e.g. CDN → Traefik → Flask).
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 def require_api_key():
     key = request.headers.get("X-API-Key", "")
