@@ -1,0 +1,39 @@
+[Unit]
+Description=Shortlink URL redirector
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=shortlink
+Group=shortlink
+WorkingDirectory=/opt/shortlink
+
+# --- Environment ---
+Environment="SHORTLINK_API_KEY=change-me-to-a-strong-secret"
+Environment="LOG_LEVEL=INFO"
+# Alternatively, point to an env file and keep secrets out of this unit:
+# EnvironmentFile=/etc/shortlink/shortlink.env
+
+ExecStart=/opt/shortlink/venv/bin/python3 shortlink.py
+
+# --- Restart policy ---
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# --- Logging (stdout/stderr go to journald automatically) ---
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shortlink
+
+# --- Hardening ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/shortlink
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
