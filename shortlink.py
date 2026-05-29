@@ -217,6 +217,13 @@ def remove_link(slug):
     log.info("Link removed  slug=%s  was=%s  ip=%s", slug, old_target, request.remote_addr)
     return jsonify(status="removed", slug=slug, was=old_target)
 
+@app.route("/")
+def root():
+    if DEFAULT_REDIRECT:
+        log.info("Root hit  ip=%s  -> default redirect: %s", request.remote_addr, DEFAULT_REDIRECT)
+        return redirect(DEFAULT_REDIRECT, 302)
+    log.warning("Root hit with no default redirect configured  ip=%s", request.remote_addr)
+    abort(404)
 
 @app.route("/<slug>")
 def go(slug):
